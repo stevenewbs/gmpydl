@@ -1,5 +1,6 @@
 # gmpydl
 Google Music Python Downloader
+-----
 Steve Newbury - 2015
 
 Basic idea is a command line downloader thing that can sit on a raspberry pi or server and auto-grab any new music I buy.
