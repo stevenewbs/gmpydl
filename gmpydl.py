@@ -24,23 +24,27 @@ from gmusicapi import Musicmanager
 from getpass import getpass
 import os
 import sys
+import shelve
+import unicodedata
 
+all_store_file = os.path.expanduser("~/.gmpydl_store")
+dl_store_file = os.path.expanduser("~/.gmpydl_dl_store")
 
 def update_first():
-	"""
 	try:
-		with open(os.path.expanduser("~/.gmpydl.conf")) as conf:
-			## read through each line
-			## put a 0 in first if we just did the oauth as you only need to do it once	
-	except IOError:
-		print "Error writing back to file
-	"""
+		with open(os.path.expanduser("~/.gmpydl.conf"), "a") as conf:
+			conf.write("first 0")
+        except IOError:
+		print "Failed to update conf file following OAUTH"
+		print "Manually add the line \"first 0\" to the config file"
 	return True
 
-def begin() :
+# assume its the first launch and have no id 
+settings = {'email': None, 'last_id': '0', 'first': '1', 'dest': '~/gmusic/MUSIC'}
 
-	settings = {}
+def load_settings():
 	try:
+		# load settings from user conf file
 		with open(os.path.expanduser("~/.gmpydl.conf")) as conf:
 			lines = conf.readlines()
 			for x in lines:
@@ -49,12 +53,21 @@ def begin() :
 					settings['email'] = parts[1]
 				if parts[0] == 'first':
 					settings['first'] = parts[1]
+				if parts[0] == 'last_id':
+					settings['last_id'] = parts[1]
+				if parts[0] == 'dest':
+					settings['dest'] = parts[1]
 
 	except IOError:
 		print "Cant load config file. Does it exist? (~/.gmpydl.conf)"
-		sys.exit()
+		return False
+	if settings['email'] == None:
+		print "Email address not found"
+		return False 
 	print "Logging in as %s" % settings['email']
-		
+	return True
+
+def begin():		
 	mm = Musicmanager()
 	if settings['first'] == '1':
 		mm.perform_oauth()
@@ -66,16 +79,71 @@ def begin() :
 def nice_close(api):
 	return api.logout()
 
+def fill_all_store(api):
+	print "%d songs in store" % len(all_store)
+	count = 0
+	songs = []
+	for chunk in api.get_uploaded_songs(incremental=True):
+		songs = songs + chunk
+		
+	print "%d songs online" % len(songs)
+		
+	for s in songs:
+		# id comes back in unicode so have to make it "store" friendly string 
+		sid = unicodedata.normalize('NFKD', s['id']).encode('ascii', 'ignore')
+		if not all_store.has_key(sid):
+			all_store[sid] = s
+			count += 1 
+	## do something with the songs
+	all_store.sync
+	print "Added %d songs to the store" % count
+		
+def download_song(api, sid):
+	song = all_store[sid]
+	artist = song['artist']
+	album = song['album']
+	title = song['title']
+	path = os.path.expanduser("%s/%s/%s" % (settings['dest'], artist, album))
+	if not os.path.exists(path):
+		try:
+			os.makedirs(path)
+			print "Making %s " % path
+		except IOError:
+			print "Failed to make dir"
+			return False
+	else:
+		print "Path exists"
+	songdata = all_store[sid]
+	filename, audio = api.download_song(songdata['id'])
+	filepath = os.path.join(path, filename)
+	try:
+		with open(filepath, 'wb') as f:
+			f.write(audio)
+		print "File written"
+		dl_store[sid] = all_store[sid]
+		print "added to download store"
+	except IOError:
+		print "Failed to write %s " % filepath
+		return False
+	return True
 
 def main():
+	if not load_settings():
+		return False
 	api = begin()
 	if api != False:
-		songs = []
-		for chunk in api.get_uploaded_songs(incremental=True):
-			songs = songs + chunk
-			print len(chunk)
-	## do something with the songs
-	nice_close(api)
+		fill_all_store(api)
+		x = 0
+		for s in all_store:
+			download_song(api, s)
+			x += 1
+			if x == 20:
+				break
+		nice_close(api)
 
+all_store = shelve.open(all_store_file)
+dl_store = shelve.open(dl_store_file)
 main()
+all_store.close()
+dl_store.close()
 sys.exit()
