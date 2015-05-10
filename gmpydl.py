@@ -27,12 +27,14 @@ import sys
 import shelve
 import unicodedata
 
-all_store_file = os.path.expanduser("~/.gmpydl_store")
-dl_store_file = os.path.expanduser("~/.gmpydl_dl_store")
+program_dir = os.path.expanduser("~/.gmpydl")
+all_store_file = os.path.join(program_dir, ".gmpydl_store")
+dl_store_file = os.path.join(program_dir, ".gmpydl_dl_store")
+conf_file = os.path.join(program_dir, ".gmpydl.conf")
 
 def update_first():
 	try:
-		with open(os.path.expanduser("~/.gmpydl.conf"), "a") as conf:
+		with open(conf_file, "a") as conf:
 			conf.write("first 0")
         except IOError:
 		print "Failed to update conf file following OAUTH"
@@ -45,7 +47,7 @@ settings = {'email': None, 'last_id': '0', 'first': '1', 'dest': '~/gmusic/MUSIC
 def load_settings():
 	try:
 		# load settings from user conf file
-		with open(os.path.expanduser("~/.gmpydl.conf")) as conf:
+		with open(conf_file) as conf:
 			lines = conf.readlines()
 			for x in lines:
 				parts = x.split()
@@ -102,8 +104,16 @@ def download_song(api, sid):
 	song = all_store[sid]
 	artist = song['artist']
 	album = song['album']
+	alb_artist = song['album_artist']
 	title = song['title']
-	path = os.path.expanduser("%s/%s/%s" % (settings['dest'], artist, album))
+	print alb_artist
+	if alb_artist and alb_artist != artist:
+		alb_artist_short = alb_artist.split(';')
+		if len(alb_artist_short) > 0:
+			alb_artist = alb_artist_short[0]
+		path = os.path.expanduser("%s/%s/%s" % (settings['dest'], alb_artist, album))
+	else:
+		path = os.path.expanduser("%s/%s/%s" % (settings['dest'], artist, album))
 	if not os.path.exists(path):
 		try:
 			os.makedirs(path)
@@ -114,6 +124,7 @@ def download_song(api, sid):
 	else:
 		print "Path exists"
 	songdata = all_store[sid]
+	print "Starting download of %s - %s" % (artist, title)
 	filename, audio = api.download_song(songdata['id'])
 	filepath = os.path.join(path, filename)
 	try:
@@ -133,14 +144,17 @@ def main():
 	api = begin()
 	if api != False:
 		fill_all_store(api)
-		x = 0
+		#x = 0
 		for s in all_store:
-			download_song(api, s)
-			x += 1
-			if x == 20:
-				break
+			if not dl_store.has_key(s):
+				download_song(api, s)
+				#x += 1
+				#if x == 20:
+				#	break
 		nice_close(api)
 
+if not os.path.exists(program_dir):
+	os.mkdir(program_dir)
 all_store = shelve.open(all_store_file)
 dl_store = shelve.open(dl_store_file)
 main()
