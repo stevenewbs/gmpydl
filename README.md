@@ -20,9 +20,9 @@ Requirements
 
 Usage
 -----
- git clone https://github.com/stevenewbs/gmpydl
- cd gmpydl
- ./gmpydl
+    git clone https://github.com/stevenewbs/gmpydl
+    cd gmpydl
+    ./gmpydl
 
 If ~/.gmpydl/.gmpydl.conf does not exist (first run), you will be asked to confirm your google account details and the directory you want your music to end up in. 
 
