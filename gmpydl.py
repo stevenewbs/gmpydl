@@ -37,8 +37,8 @@ conf_file = os.path.join(program_dir, ".gmpydl.conf")
 settings = {'email': None, 'first': '1', 'dest': '~/gmusic/MUSIC', 'nodl': False}
 
 def do_args():
-	parser = argparse.ArgumentParser(description='GMPYDL Args')
-	parser.add_argument('-n', '--nodl', action='store_true', help="No Download - syncrhonises a list of existing files\nHandy for initial sync if you dont need all your current music, only future additions")
+	parser = argparse.ArgumentParser(description='GMPYDL - Steve Newbury 2015 - version 1.0')
+	parser.add_argument('-n', '--nodl', action='store_true', help="No Download - syncrhonises a list of existing files.  Handy for initial sync if you dont need all your current music downloaded")
 	args = parser.parse_args()
 	settings['nodl'] = args.nodl
 
@@ -176,7 +176,6 @@ def download_song(api, sid):
 def main():
 	if not load_settings():
 		return False
-	do_args()
 	api = begin()
 	if api != False:
 		fill_all_store(api)
@@ -202,6 +201,7 @@ def main():
 
 
 if __name__ == "__main__":
+	do_args()
 	make_prog_dir()
 	all_store = shelve.open(all_store_file)
 	dl_store = shelve.open(dl_store_file)

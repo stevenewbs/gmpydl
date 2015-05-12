@@ -26,3 +26,6 @@ Usage
 
 If ~/.gmpydl/.gmpydl.conf does not exist (first run), you will be asked to confirm your google account details and the directory you want your music to end up in. 
 
+Run with the flag -n/--nodl to mark your current online music collection as "downloaded". Handy if you already have a large online collection which you dont want to actually download again. Future runs without the -n flag will spot just the new songs. 
+
+
