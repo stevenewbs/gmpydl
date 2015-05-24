@@ -48,7 +48,7 @@ def update_first():
     try:
         with open(conf_file, "a") as conf:
             conf.write("first 0")
-        except IOError:
+    except IOError:
         print "Failed to update conf file following OAUTH"
         print "Manually add the line \"first 0\" to the config file"
     return True
