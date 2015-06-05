@@ -60,7 +60,7 @@ def make_prog_dir():
         try:
             os.mkdir(program_dir)
         except IOError as e:
-            print "Error creating program dir: %s " % e
+            log("Error creating program dir: %s " % e)
             return False
     return True
 
@@ -83,7 +83,7 @@ def load_settings():
         settings['dest'] = raw_input("Music download destination directory: ")
         try:
             with open(conf_file, "w") as conf:
-                print "Writng config to file"
+                log("Writng config to file")
                 conf.write("email %s\n" % settings['email'])
                 conf.write("dest %s\n" % settings['dest'])  
         except IOError as e:
@@ -103,13 +103,13 @@ def load_settings():
                     if parts[0] == 'first':
                         settings['first'] = parts[1]
         except IOError:
-            print "Cant load config file. Does it exist? (%s)" % conf_file
+            log("Cant load config file. Does it exist? (%s)" % conf_file)
             return False
         if settings['email'] == None:
-            print "Email address not found"
+            log("Email address not found")
             return False 
-    print "Logging in as %s" % settings['email']
-    print "Music going to %s" % settings['dest']
+    log("Logging in as %s" % settings['email'])
+    log("Music going to %s" % settings['dest'])
     return True
 
 def begin():        
@@ -163,12 +163,12 @@ def download_song(api, sid):
             os.makedirs(path)
             #print "Making %s " % path
         except IOError:
-            print "Failed to make dir"
+            log("Failed to make dir")
             return False
     #else:
     #   print "Path exists"
     songdata = all_store[sid]
-    print "Starting download of %s - %s" % (artist, title)
+    log("Starting download of %s - %s" % (artist, title))
     filename, audio = api.download_song(songdata['id'])
     filepath = os.path.join(path, filename)
     try:
@@ -178,7 +178,7 @@ def download_song(api, sid):
         dl_store[sid] = all_store[sid]
         #print "added to download store"
     except IOError:
-        print "Failed to write %s " % filepath
+        log("Failed to write %s " % filepath)
         return False
     dl_store.sync()
     return True
@@ -190,13 +190,13 @@ def main():
     if api != False:
         fill_all_store(api)
         if settings['nodl']:
-            print "No download mode - synchronisig..."
+            log("No download mode - synchronisig...")
             # dont do any downloads - mark all current songs as downloaded
             for s in all_store:
                 dl_store[s] = all_store[s]
         else:   
             diff = len(all_store) - len(dl_store)
-            print "%d new songs" % diff
+            log("%d new songs" % diff)
             dl_count = 0
             if diff > 0:
                 for s in all_store:
@@ -206,7 +206,7 @@ def main():
                         if TESTING: 
                             if dl_count == 10:
                                 break
-            print "%d new songs downloaded" % dl_count
+            log("%d new songs downloaded" % dl_count)
         nice_close(api)
 
 
@@ -223,5 +223,6 @@ if __name__ == "__main__":
         all_store.close()
         dl_store.close()
 	retry += 1
+	log("Hit some kid of error - going around again")
     sys.exit()
 
