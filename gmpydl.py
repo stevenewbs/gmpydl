@@ -27,6 +27,7 @@ import sys
 import shelve
 import unicodedata
 import argparse
+from datetime import datetime
 
 TESTING = False
 
@@ -34,6 +35,7 @@ program_dir = os.path.expanduser("~/.gmpydl")
 all_store_file = os.path.join(program_dir, ".gmpydl_store")
 dl_store_file = os.path.join(program_dir, ".gmpydl_dl_store")
 conf_file = os.path.join(program_dir, ".gmpydl.conf")
+log_file = os.path.join(program_dir, "gmpydl.log")
 settings = {'email': None, 'first': '1', 'dest': '~/gmusic/MUSIC', 'nodl': False}
 
 def do_args():
@@ -61,9 +63,15 @@ def make_prog_dir():
             print "Error creating program dir: %s " % e
             return False
     return True
-            
 
-
+def log(what):
+    s = "%s : %s" % (datetime.now, what)
+    if TESTING:
+        print s
+    else:
+        with open(log_file, '+a') as f:
+		f.write(s)
+   
 def load_settings():
     if not make_prog_dir():
         return False
@@ -205,12 +213,15 @@ def main():
 if __name__ == "__main__":
     do_args()
     make_prog_dir()
-    all_store = shelve.open(all_store_file)
-    dl_store = shelve.open(dl_store_file)
-    main()
-    all_store.sync()
-    dl_store.sync()
-    all_store.close()
-    dl_store.close()
+    retry = 0
+    while retry < 10:
+        all_store = shelve.open(all_store_file)
+        dl_store = shelve.open(dl_store_file)
+        main()
+        all_store.sync()
+        dl_store.sync()
+        all_store.close()
+        dl_store.close()
+	retry += 1
     sys.exit()
 
