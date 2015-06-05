@@ -65,7 +65,7 @@ def make_prog_dir():
     return True
 
 def log(what):
-    s = "%s : %s" % (datetime.datetime.now(), what)
+    s = "\n%s : %s" % (datetime.datetime.now(), what)
     if TESTING:
         print s
     else:
