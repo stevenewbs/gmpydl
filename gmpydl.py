@@ -69,7 +69,7 @@ def log(what):
     if TESTING:
         print s
     else:
-        with open(log_file, '+a') as f:
+        with open(log_file, 'a+') as f:
 		f.write(s)
    
 def load_settings():
