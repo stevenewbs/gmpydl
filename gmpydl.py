@@ -27,7 +27,7 @@ import sys
 import shelve
 import unicodedata
 import argparse
-from datetime import datetime
+import datetime
 
 TESTING = False
 
@@ -65,7 +65,7 @@ def make_prog_dir():
     return True
 
 def log(what):
-    s = "%s : %s" % (datetime.now, what)
+    s = "%s : %s" % (datetime.datetime.now(), what)
     if TESTING:
         print s
     else:
