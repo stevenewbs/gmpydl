@@ -40,7 +40,7 @@ settings = {'email': None, 'first': '1', 'dest': '~/gmusic/MUSIC', 'nodl': False
 
 def do_args():
     parser = argparse.ArgumentParser(description='GMPYDL - Steve Newbury 2015 - version 1.0')
-    parser.add_argument('-n', '--nodl', action='store_true', help="No Download - syncrhonises a list of existing files.  Handy for initial sync if you dont need all your current music downloaded")
+    parser.add_argument('-n', '--nodl', action='store_true', help="No Download - synchronises a list of existing files.  Handy for initial sync if you dont need all your current music downloaded")
     parser.add_argument('-d', '--debug', action='store_true', help="Debug mode - only downloads 10 tracks")
     args = parser.parse_args()
     settings['nodl'] = args.nodl
