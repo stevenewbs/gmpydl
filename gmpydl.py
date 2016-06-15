@@ -222,7 +222,7 @@ if __name__ == "__main__":
         dl_store.sync()
         all_store.close()
         dl_store.close()
-	retry += 1
-	log("Hit some kid of error - going around again")
+        retry += 1
+        log("Hit some kid of error - going around again")
     sys.exit()
 
