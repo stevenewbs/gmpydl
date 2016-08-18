@@ -141,7 +141,7 @@ def fill_all_store(api):
 def getsongdata(song):
     return song['artist'], song['album'], song['album_artist'], song['title']
 
-def download_song(api, sid):
+def download_song(api, sid, update_dl):
     song = all_store[sid]
     artist, album, alb_artist, title = getsongdata(song)
     if alb_artist and alb_artist != artist:
@@ -164,11 +164,13 @@ def download_song(api, sid):
     try:
         with open(filepath, 'wb') as f:
             f.write(audio)
-        dl_store[sid] = all_store[sid]
+        if update_dl:
+            dl_store[sid] = all_store[sid]
     except IOError:
         log("Failed to write %s " % filepath)
         return False
-    dl_store.sync()
+    if update_dl:
+        dl_store.sync()
     return True
 
 def main():
@@ -189,7 +191,7 @@ def main():
             if diff > 0:
                 for s in all_store:
                     if not dl_store.has_key(s):
-                        download_song(api, s)
+                        download_song(api, s, True)
                         dl_count += 1
                         if TESTING:
                             if dl_count == 10:
@@ -210,41 +212,44 @@ def searchmain():
         return False
     term, termtyp = getinput()
     term = term.lower().strip()
-    dl_list = []
+    dl_list = {}
     for s in all_store:
         song = all_store[s]
         artist, album, alb_artist, title = getsongdata(song)
         if termtyp == 1:
             if term in artist.lower() or term in alb_artist.lower():
-                #print("Artist: %s(%s)" % (artist, alb_artist))
-                dl_list.append(song)
+                dl_list[s] = song
         if termtyp == 2:
             if term in album.lower():
-                #print("Album: %s" % album)
-                dl_list.append(song)
+                dl_list[s] = song
         if termtyp == 3:
             if term in title.lower():
-                #print("Title: %s" % title)
-                dl_list.append(song)
+                dl_list[s] = song
+    if len(dl_list) == 0:
+        print("None found")
+        return
     print("Proposing download of %d songs:" % len(dl_list))
     for s in dl_list:
-        print("Song: %s - Artist: %s from Album: %s" % (s["title"], s["artist"], s["album"]))
+        print("Song: %s - Artist: %s from Album: %s" % (dl_list[s]["title"], dl_list[s]["artist"], dl_list[s]["album"]))
     mode = int(raw_input("Go ahead (1) or choose songs interactively (2)\n[1/2]: "))
     api = api_init()
     if api == False:
         log("Failed to initialise GMusic API")
         return
     else:
+        x = 1
         for s in dl_list:
             if mode == 2:
-                do = raw_input("Download %s - %s(%s)? [Y/n] :" % (s["title"], s["artist"], s["alb_artist"]))
-                if d.strip() == "n" or d.strip() == "N":
+                do = raw_input("Download %s - %s(%s)? [Y/n] :" % (dl_list[s]["title"], dl_list[s]["artist"], dl_list[s]["album_artist"]))
+                if do.strip() == "n" or do.strip() == "N":
                     print("Skipping...")
                     continue
-            if not download_song(api, s):
+            if not download_song(api, s, False):
                 print("Download failed - meh!?")
             else:
-                print("Downloaded")
+                print("Downloaded %d/%d" % (x, len(dl_list)))
+                x += 1
+    print("Done!")
     nice_close(api)
 
 if __name__ == "__main__":
