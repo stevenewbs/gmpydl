@@ -29,8 +29,6 @@ import unicodedata
 import argparse
 import datetime
 
-TESTING = False
-
 program_dir = os.path.expanduser("~/.gmpydl")
 all_store_file = os.path.join(program_dir, ".gmpydl_store")
 dl_store_file = os.path.join(program_dir, ".gmpydl_dl_store")
@@ -39,12 +37,13 @@ log_file = os.path.join(program_dir, "gmpydl.log")
 settings = {'email': None, 'first': '1', 'dest': '~/gmusic/MUSIC', 'nodl': False}
 
 def do_args():
-    parser = argparse.ArgumentParser(description='GMPYDL - Steve Newbury 2015 - version 1.0')
+    parser = argparse.ArgumentParser(description='GMPYDL - Steve Newbury 2015 - version 1.5')
     parser.add_argument('-n', '--nodl', action='store_true', help="No Download - synchronises a list of existing files.  Handy for initial sync if you dont need all your current music downloaded")
     parser.add_argument('-d', '--debug', action='store_true', help="Debug mode - only downloads 10 tracks")
+    parser.add_argument('-s', '--search', action='store_true', help="Search for an album, artist or song to download")
     args = parser.parse_args()
     settings['nodl'] = args.nodl
-    TESTING = args.debug
+    return args
 
 def update_first():
     try:
@@ -71,7 +70,7 @@ def log(what):
     else:
         with open(log_file, 'a+') as f:
 		f.write(s.encode("UTF-8"))
-   
+
 def load_settings():
     if not make_prog_dir():
         return False
@@ -85,7 +84,7 @@ def load_settings():
             with open(conf_file, "w") as conf:
                 log("Writng config to file")
                 conf.write("email %s\n" % settings['email'])
-                conf.write("dest %s\n" % settings['dest'])  
+                conf.write("dest %s\n" % settings['dest'])
         except IOError as e:
             print "Error creating config file: %s" % e
             return False
@@ -107,12 +106,12 @@ def load_settings():
             return False
         if settings['email'] == None:
             log("Email address not found")
-            return False 
+            return False
     log("Logging in as %s" % settings['email'])
     log("Music going to %s" % settings['dest'])
     return True
 
-def begin():        
+def api_init():
     mm = Musicmanager()
     if settings['first'] == '1':
         print "Performing OAUTH..."
@@ -126,31 +125,25 @@ def nice_close(api):
     return api.logout()
 
 def fill_all_store(api):
-    #print "%d songs in store" % len(all_store)
     count = 0
     songs = []
     for chunk in api.get_uploaded_songs(incremental=True):
         songs = songs + chunk
-        
-    #print "%d songs online" % len(songs)
-        
     for s in songs:
-        # id comes back in unicode so have to make it "store" friendly string 
+        # id comes back in unicode so have to make it "store" friendly string
         sid = unicodedata.normalize('NFKD', s['id']).encode('ascii', 'ignore')
         if not all_store.has_key(sid):
             all_store[sid] = s
-            count += 1 
+            count += 1
     # write the changes back to the store
     all_store.sync()
-    #print "Discovered %d new songs online" % count
-        
+
+def getsongdata(song):
+    return song['artist'], song['album'], song['album_artist'], song['title']
+
 def download_song(api, sid):
     song = all_store[sid]
-    artist = song['artist']
-    album = song['album']
-    alb_artist = song['album_artist']
-    title = song['title']
-    #print alb_artist
+    artist, album, alb_artist, title = getsongdata(song)
     if alb_artist and alb_artist != artist:
         alb_artist_short = alb_artist.split(';')
         if len(alb_artist_short) > 0:
@@ -161,12 +154,9 @@ def download_song(api, sid):
     if not os.path.exists(path):
         try:
             os.makedirs(path)
-            #print "Making %s " % path
         except IOError:
             log("Failed to make dir")
             return False
-    #else:
-    #   print "Path exists"
     songdata = all_store[sid]
     log("Starting download of %s - %s" % (artist, title))
     filename, audio = api.download_song(songdata['id'])
@@ -174,9 +164,7 @@ def download_song(api, sid):
     try:
         with open(filepath, 'wb') as f:
             f.write(audio)
-        #print "File written"
         dl_store[sid] = all_store[sid]
-        #print "added to download store"
     except IOError:
         log("Failed to write %s " % filepath)
         return False
@@ -186,7 +174,7 @@ def download_song(api, sid):
 def main():
     if not load_settings():
         return False
-    api = begin()
+    api = api_init()
     if api != False:
         fill_all_store(api)
         if settings['nodl']:
@@ -194,7 +182,7 @@ def main():
             # dont do any downloads - mark all current songs as downloaded
             for s in all_store:
                 dl_store[s] = all_store[s]
-        else:   
+        else:
             diff = len(all_store) - len(dl_store)
             log("%d new songs" % diff)
             dl_count = 0
@@ -203,26 +191,75 @@ def main():
                     if not dl_store.has_key(s):
                         download_song(api, s)
                         dl_count += 1
-                        if TESTING: 
+                        if TESTING:
                             if dl_count == 10:
                                 break
             log("%d new songs downloaded" % dl_count)
         nice_close(api)
+    else:
+        log("Failed to initialise GMusic API")
 
+def getinput():
+    term = raw_input("Enter your seach term: ")
+    ty = int(raw_input("Supported search types: \nArtist - 1\nAlbum - 2\nSong - 3\nEnter type: "))
+    return term, ty
+
+def searchmain():
+    print("searchmain")
+    if not load_settings():
+        return False
+    term, termtyp = getinput()
+    term = term.lower().strip()
+    dl_list = []
+    for s in all_store:
+        song = all_store[s]
+        artist, album, alb_artist, title = getsongdata(song)
+        if termtyp == 1:
+            if term in artist.lower() or term in alb_artist.lower():
+                #print("Artist: %s(%s)" % (artist, alb_artist))
+                dl_list.append(song)
+        if termtyp == 2:
+            if term in album.lower():
+                #print("Album: %s" % album)
+                dl_list.append(song)
+        if termtyp == 3:
+            if term in title.lower():
+                #print("Title: %s" % title)
+                dl_list.append(song)
+    print("Proposing download of %d songs:" % len(dl_list))
+    for s in dl_list:
+        print("Song: %s - Artist: %s from Album: %s" % (s["title"], s["artist"], s["album"]))
+    mode = int(raw_input("Go ahead (1) or choose songs interactively (2)\n[1/2]: "))
+    api = api_init()
+    if api == False:
+        log("Failed to initialise GMusic API")
+        return
+    else:
+        for s in dl_list:
+            if mode == 2:
+                do = raw_input("Download %s - %s(%s)? [Y/n] :" % (s["title"], s["artist"], s["alb_artist"]))
+                if d.strip() == "n" or d.strip() == "N":
+                    print("Skipping...")
+                    continue
+            if not download_song(api, s):
+                print("Download failed - meh!?")
+            else:
+                print("Downloaded")
+    nice_close(api)
 
 if __name__ == "__main__":
-    do_args()
+    args = do_args()
+    TESTING = args.debug
+    SEARCHMODE = args.search
     make_prog_dir()
-    retry = 0
-    while retry < 10:
-        all_store = shelve.open(all_store_file)
+    all_store = shelve.open(all_store_file)
+    if SEARCHMODE:
+        searchmain()
+    else :
         dl_store = shelve.open(dl_store_file)
         main()
-        all_store.sync()
         dl_store.sync()
-        all_store.close()
         dl_store.close()
-        retry += 1
-        log("Hit some kid of error - going around again")
+    all_store.sync()
+    all_store.close()
     sys.exit()
-
