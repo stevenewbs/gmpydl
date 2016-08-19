@@ -1,24 +1,6 @@
 #!/usr/bin/env python2
 
 # Copyright (c) 2015 Steve Newbury
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
 
 from gmusicapi import Musicmanager
 from getpass import getpass
@@ -30,28 +12,35 @@ import argparse
 import datetime
 
 program_dir = os.path.expanduser("~/.gmpydl")
-all_store_file = os.path.join(program_dir, ".gmpydl_store")
 dl_store_file = os.path.join(program_dir, ".gmpydl_dl_store")
+dl2_store_file = os.path.join(program_dir, ".gmpydl_dl2_store")
 conf_file = os.path.join(program_dir, ".gmpydl.conf")
 log_file = os.path.join(program_dir, "gmpydl.log")
-settings = {'email': None, 'first': '1', 'dest': '~/gmusic/MUSIC', 'nodl': False}
+settings = {'email': None, 'first': '1', 'email2': None, 'first2': '1', 'dest': '~/gmusic/MUSIC', 'nodl': False}
 
 def do_args():
-    parser = argparse.ArgumentParser(description='GMPYDL - Steve Newbury 2015 - version 1.5')
+    parser = argparse.ArgumentParser(description='GMPYDL - Steve Newbury 2015 - version 1.6')
     parser.add_argument('-n', '--nodl', action='store_true', help="No Download - synchronises a list of existing files.  Handy for initial sync if you dont need all your current music downloaded")
     parser.add_argument('-d', '--debug', action='store_true', help="Debug mode - only downloads 10 tracks")
     parser.add_argument('-s', '--search', action='store_true', help="Search for an album, artist or song to download")
+    parser.add_argument('-o', '--overwrite', action='store_true', help="Force overwrite of songs that already exist in the destination.")
+    parser.add_argument('-a', '--addaccount', action='store_true', help="Add an extra Google account to download music from.") # i got married!
+    parser.add_argument('--otheraccount', action='store_true', help="Use the second Google account (if configured)")
     args = parser.parse_args()
     settings['nodl'] = args.nodl
     return args
 
-def update_first():
+def update_first(email):
+    if settings['email'] == email:
+        line = "first 0"
+    if settings['email2'] == email:
+        line = "first2 0"
     try:
         with open(conf_file, "a") as conf:
-            conf.write("first 0")
+            conf.write(line)
     except IOError:
-        print "Failed to update conf file following OAUTH"
-        print "Manually add the line \"first 0\" to the config file"
+        print "Failed to update conf file following OAUTH for %s" % e
+        print "Manually add the line \"%s\" to the config file" % line
     return True
 
 def make_prog_dir():
@@ -74,7 +63,6 @@ def log(what):
 def load_settings():
     if not make_prog_dir():
         return False
-
     if not os.path.exists(conf_file):
         # ask for the email address and music destination
         print "Welcome to gmpydl - I cant find a config file so please enter the following to begin\n"
@@ -101,24 +89,56 @@ def load_settings():
                         settings['dest'] = parts[1]
                     if parts[0] == 'first':
                         settings['first'] = parts[1]
+                    if parts[0] == 'email2':
+                        settings['email2'] = parts[1]
+                    if parts[0] == 'first2':
+                        settings['first2'] = parts[1]
         except IOError:
             log("Cant load config file. Does it exist? (%s)" % conf_file)
             return False
         if settings['email'] == None:
             log("Email address not found")
             return False
-    log("Logging in as %s" % settings['email'])
     log("Music going to %s" % settings['dest'])
     return True
 
+def add_account():
+    if load_settings():
+        if settings['email2'] == None:
+            print "Adding second account to gmpydl - please enter the following to begin\n"
+            settings['email2'] = raw_input("Google Account email address: ")
+            try:
+                with open(conf_file, "a") as conf:
+                    log("Writng config to file")
+                    conf.write("email2 %s\n" % settings['email2'])
+            except IOError as e:
+                print "Error creating config file: %s" % e
+                return False
+            # perform the oauth
+            api = api_init()
+            if api is not False:
+                nice_close(api)
+        else:
+            print("Please remove email2 setting from %s" % conf_file)
+    else:
+        print("Epic Fail! Check config file")
+
 def api_init():
     mm = Musicmanager()
-    if settings['first'] == '1':
-        print "Performing OAUTH..."
-        mm.perform_oauth()
-        update_first()
-    if mm.login():
+    e = settings['email']
+    creds = os.path.expanduser("~/.local/share/gmusicapi/oauth.cred") # default oauth store location
+    if settings['first2'] == '1' or OTHERACCOUNT:
+        e = settings['email2']
+        creds = os.path.expanduser("~/.local/share/gmusicapi/oauth2.cred")
+    if e is not None:
+        if settings['first2'] == '1' or settings['first'] == '1':
+            print "Performing OAUTH for %s" % e
+            mm.perform_oauth(storage_filepath=creds)
+            update_first(e)
+    log("Logging in as %s" % e)
+    if mm.login(oauth_credentials=creds):
         return mm
+    log("Login failed for second user")
     return False
 
 def nice_close(api):
@@ -129,21 +149,23 @@ def fill_all_store(api):
     songs = []
     for chunk in api.get_uploaded_songs(incremental=True):
         songs = songs + chunk
+        out = 'Loding library...%d' % len(songs)
+        sys.stdout.write("\r\x1b[K"+out.__str__())
+        sys.stdout.flush()
+    print("\r\n")
     for s in songs:
-        # id comes back in unicode so have to make it "store" friendly string
+        # id comes back in unicode so have to make it dictionary friendly string
         sid = unicodedata.normalize('NFKD', s['id']).encode('ascii', 'ignore')
         if not all_store.has_key(sid):
             all_store[sid] = s
             count += 1
-    # write the changes back to the store
-    all_store.sync()
 
-def getsongdata(song):
+def get_song_data(song):
     return song['artist'], song['album'], song['album_artist'], song['title']
 
 def download_song(api, sid, update_dl):
     song = all_store[sid]
-    artist, album, alb_artist, title = getsongdata(song)
+    artist, album, alb_artist, title = get_song_data(song)
     if alb_artist and alb_artist != artist:
         alb_artist_short = alb_artist.split(';')
         if len(alb_artist_short) > 0:
@@ -151,26 +173,36 @@ def download_song(api, sid, update_dl):
         path = os.path.expanduser("%s/%s/%s" % (settings['dest'], alb_artist, album))
     else:
         path = os.path.expanduser("%s/%s/%s" % (settings['dest'], artist, album))
+    log("Starting download of %s - %s" % (artist, title))
     if not os.path.exists(path):
         try:
             os.makedirs(path)
         except IOError:
             log("Failed to make dir")
             return False
-    songdata = all_store[sid]
-    log("Starting download of %s - %s" % (artist, title))
-    filename, audio = api.download_song(songdata['id'])
+    else:
+        # check if the filename already exists
+        # Build filename like "02 - track title.mp3" (like Gmusic passes when we download)
+        f = "%s/%02d - %s.mp3" % (path, song['track_number'], song['title'])
+        if os.path.isfile(f):
+            if not OVERWRITE:
+                log("File already exists - marking as downloaded (enable Overwrite to re-download)")
+                if update_dl:
+                    dl_store[sid] = all_store[sid]
+                    dl_store.sync()
+                return True
+    # do the download
+    filename, audio = api.download_song(song['id'])
     filepath = os.path.join(path, filename)
     try:
         with open(filepath, 'wb') as f:
             f.write(audio)
         if update_dl:
             dl_store[sid] = all_store[sid]
+            dl_store.sync()
     except IOError:
         log("Failed to write %s " % filepath)
         return False
-    if update_dl:
-        dl_store.sync()
     return True
 
 def main():
@@ -201,21 +233,22 @@ def main():
     else:
         log("Failed to initialise GMusic API")
 
-def getinput():
+def get_input():
     term = raw_input("Enter your seach term: ")
     ty = int(raw_input("Supported search types: \nArtist - 1\nAlbum - 2\nSong - 3\nEnter type: "))
     return term, ty
 
 def searchmain():
-    print("searchmain")
     if not load_settings():
         return False
-    term, termtyp = getinput()
+    api = api_init()
+    fill_all_store(api)
+    term, termtyp = get_input()
     term = term.lower().strip()
     dl_list = {}
     for s in all_store:
         song = all_store[s]
-        artist, album, alb_artist, title = getsongdata(song)
+        artist, album, alb_artist, title = get_song_data(song)
         if termtyp == 1:
             if term in artist.lower() or term in alb_artist.lower():
                 dl_list[s] = song
@@ -232,9 +265,8 @@ def searchmain():
     for s in dl_list:
         print("Song: %s - Artist: %s from Album: %s" % (dl_list[s]["title"], dl_list[s]["artist"], dl_list[s]["album"]))
     mode = int(raw_input("Go ahead (1) or choose songs interactively (2)\n[1/2]: "))
-    api = api_init()
     if api == False:
-        log("Failed to initialise GMusic API")
+        print("Error - Failed to initialise GMusic API") # notify user as this is generally run interactively
         return
     else:
         x = 1
@@ -245,9 +277,14 @@ def searchmain():
                     print("Skipping...")
                     continue
             if not download_song(api, s, False):
-                print("Download failed - meh!?")
+                print("Download failed - eh?!")
             else:
-                print("Downloaded %d/%d" % (x, len(dl_list)))
+                out = "Completed %d/%d..." % (x, len(dl_list))
+                if mode != 2:
+                    sys.stdout.write("\r\x1b[K"+out.__str__())
+                    sys.stdout.flush()
+                else:
+                    print(out)
                 x += 1
     print("Done!")
     nice_close(api)
@@ -256,15 +293,22 @@ if __name__ == "__main__":
     args = do_args()
     TESTING = args.debug
     SEARCHMODE = args.search
+    OVERWRITE = args.overwrite
+    ADDACCOUNT = args.addaccount
+    OTHERACCOUNT = args.otheraccount
     make_prog_dir()
-    all_store = shelve.open(all_store_file)
+    if ADDACCOUNT:
+        add_account()
+        sys.exit()
+    all_store = {} # open an empty store
     if SEARCHMODE:
         searchmain()
     else :
-        dl_store = shelve.open(dl_store_file)
+        if OTHERACCOUNT:
+            dl_store = shelve.open(dl2_store_file)
+        else:
+            dl_store = shelve.open(dl_store_file)
         main()
         dl_store.sync()
         dl_store.close()
-    all_store.sync()
-    all_store.close()
     sys.exit()
