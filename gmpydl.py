@@ -32,9 +32,9 @@ def do_args():
 
 def update_first(email):
     if settings['email'] == email:
-        line = "first 0"
+        line = "first 0\n"
     if settings['email2'] == email:
-        line = "first2 0"
+        line = "first2 0\n"
     try:
         with open(conf_file, "a") as conf:
             conf.write(line)
@@ -83,6 +83,8 @@ def load_settings():
                 lines = conf.readlines()
                 for x in lines:
                     parts = x.split()
+                    if len(parts) < 1:
+                        continue
                     if parts[0] == 'email':
                         settings['email'] = parts[1]
                     if parts[0] == 'dest':
@@ -110,7 +112,7 @@ def add_account():
             try:
                 with open(conf_file, "a") as conf:
                     log("Writng config to file")
-                    conf.write("email2 %s\n" % settings['email2'])
+                    conf.write("\nemail2 %s\n" % settings['email2'])
             except IOError as e:
                 print "Error creating config file: %s" % e
                 return False
