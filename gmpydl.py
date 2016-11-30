@@ -129,7 +129,7 @@ def api_init():
     mm = Musicmanager()
     e = settings['email']
     creds = os.path.expanduser("~/.local/share/gmusicapi/oauth.cred") # default oauth store location
-    if settings['first2'] == '1' or OTHERACCOUNT:
+    if OTHERACCOUNT:
         e = settings['email2']
         creds = os.path.expanduser("~/.local/share/gmusicapi/oauth2.cred")
     if e is not None:
