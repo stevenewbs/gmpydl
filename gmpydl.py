@@ -179,6 +179,9 @@ def download_song(api, sid, update_dl):
     if not os.path.exists(path):
         try:
             os.makedirs(path)
+        except OSError as e:
+            log("Error making directory: %s" % e)
+            return False 
         except IOError:
             log("Failed to make dir")
             return False
