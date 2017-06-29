@@ -133,7 +133,7 @@ def api_init():
         e = settings['email2']
         creds = os.path.expanduser("~/.local/share/gmusicapi/oauth2.cred")
     if e is not None:
-        if settings['first2'] == '1' or settings['first'] == '1':
+        if settings['first'] == '1' or OTHERACCOUNT and settings['first2'] == '1':
             print "Performing OAUTH for %s" % e
             mm.perform_oauth(storage_filepath=creds)
             update_first(e)
