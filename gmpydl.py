@@ -1,5 +1,5 @@
 #!/usr/bin/env python2
-
+# -*- coding: utf-8 -*-
 # Copyright (c) 2015 Steve Newbury
 
 from gmusicapi import Musicmanager
@@ -188,7 +188,7 @@ def download_song(api, sid, update_dl):
     else:
         # check if the filename already exists
         # Build filename like "02 - track title.mp3" (like Gmusic passes when we download)
-        f = "%s/%02d - %s.mp3" % (path, song['track_number'], song['title'])
+        f = u'%s/%02d - %s.mp3' % (path, song['track_number'], song['title'])
         if os.path.isfile(f):
             if not OVERWRITE:
                 log("File already exists - marking as downloaded (enable Overwrite to re-download)")
@@ -198,7 +198,7 @@ def download_song(api, sid, update_dl):
                 return True
     # do the download
     filename, audio = api.download_song(song['id'])
-    filepath = os.path.join(path, filename)
+    filepath = u'%s' % os.path.join(path, filename)
     try:
         with open(filepath, 'wb') as f:
             f.write(audio)
