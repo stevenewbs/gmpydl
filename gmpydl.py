@@ -197,7 +197,8 @@ def download_song(api, sid, update_dl):
                     dl_store.sync()
                 return True
     # do the download
-    filename, audio = api.download_song(song['id'])
+    ignore, audio = api.download_song(song['id'])
+    filename = u'%s/%02d - %s.mp3' % (path, song['track_number'], song['title'])
     filepath = u'%s' % os.path.join(path, filename)
     try:
         with open(filepath, 'wb') as f:
