@@ -18,6 +18,8 @@ conf_file = os.path.join(program_dir, ".gmpydl.conf")
 log_file = os.path.join(program_dir, "gmpydl.log")
 settings = {'email': None, 'first': '1', 'email2': None, 'first2': '1', 'dest': '~/gmusic/MUSIC', 'nodl': False}
 
+lock = threading.Lock()
+
 def do_args():
     parser = argparse.ArgumentParser(description='GMPYDL - Steve Newbury 2015 - version 1.6')
     parser.add_argument('-n', '--nodl', action='store_true', help="No Download - synchronises a list of existing files.  Handy for initial sync if you dont need all your current music downloaded")
@@ -209,8 +211,9 @@ def download_song(api, sid, update_dl):
         with open(filepath, 'wb') as f:
             f.write(audio)
         if update_dl:
-            dl_store[sid] = all_store[sid]
-            dl_store.sync()
+            with lock:
+                dl_store[sid] = all_store[sid]
+                dl_store.sync()
     except IOError as e:
         log("Failed to write %s " % filepath + ": " + str(e))
         return False
