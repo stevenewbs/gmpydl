@@ -1,7 +1,8 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 # Copyright (c) 2015 Steve Newbury
-
+import threading
+from thread import start_new_thread
 from gmusicapi import Musicmanager
 from getpass import getpass
 import os
@@ -23,6 +24,7 @@ def do_args():
     parser.add_argument('-n', '--nodl', action='store_true', help="No Download - synchronises a list of existing files.  Handy for initial sync if you dont need all your current music downloaded")
     parser.add_argument('-d', '--debug', action='store_true', help="Debug mode - only downloads 10 tracks")
     parser.add_argument('-s', '--search', action='store_true', help="Search for an album, artist or song to download")
+    parser.add_argument('-t', '--threads', default=15, action='store_true', help="Number of multiple threads for downloading tracks (Default: 15)")
     parser.add_argument('-o', '--overwrite', action='store_true', help="Force overwrite of songs that already exist in the destination.")
     parser.add_argument('-a', '--addaccount', action='store_true', help="Add an extra Google account to download music from.") # i got married!
     parser.add_argument('--otheraccount', action='store_true', help="Use the second Google account (if configured)")
@@ -38,7 +40,7 @@ def update_first(email):
     try:
         with open(conf_file, "a") as conf:
             conf.write(line)
-    except IOError:
+    except IOError as e:
         print "Failed to update conf file following OAUTH for %s" % e
         print "Manually add the line \"%s\" to the config file" % line
     return True
@@ -181,7 +183,7 @@ def download_song(api, sid, update_dl):
             os.makedirs(path)
         except OSError as e:
             log("Error making directory: %s" % e)
-            return False 
+            return False
         except IOError:
             log("Failed to make dir")
             return False
@@ -197,7 +199,11 @@ def download_song(api, sid, update_dl):
                     dl_store.sync()
                 return True
     # do the download
-    ignore, audio = api.download_song(song['id'])
+    try:
+        _, audio = api.download_song(song['id'])
+    except Exception as e:
+        log(str(e) + " ID: " + song['id'] + " - " + song['title'])
+        return False
     filename = u'%s/%02d - %s.mp3' % (path, song['track_number'], song['title'])
     filepath = u'%s' % os.path.join(path, filename)
     try:
@@ -206,8 +212,8 @@ def download_song(api, sid, update_dl):
         if update_dl:
             dl_store[sid] = all_store[sid]
             dl_store.sync()
-    except IOError:
-        log("Failed to write %s " % filepath)
+    except IOError as e:
+        log("Failed to write %s " % filepath + ": " + str(e))
         return False
     return True
 
@@ -215,7 +221,7 @@ def main():
     if not load_settings():
         return False
     api = api_init()
-    if api != False:
+    if api:
         fill_all_store(api)
         if settings['nodl']:
             log("No download mode - synchronisig...")
@@ -227,20 +233,46 @@ def main():
             log("%d new songs" % diff)
             dl_count = 0
             if diff > 0:
+                threads = list()
                 for s in all_store:
-                    if not dl_store.has_key(s):
-                        download_song(api, s, True)
+                    if s not in dl_store:
+                        downloadThread = threading.Thread(target=download_song, args=(api, s, True), name="Thread-{}".format(s))
+                        downloadThread.setDaemon(True)
+                        threads.append(downloadThread)
+                        #download_song(api, s, True)
                         dl_count += 1
                         if TESTING:
                             if dl_count == 10:
                                 break
+                submit_threads(threads)
+
             log("%d new songs downloaded" % dl_count)
         nice_close(api)
     else:
         log("Failed to initialise GMusic API")
 
+def submit_threads(threads):
+    total = len(threads)
+    log("%d%%" % 0)
+    index = 0
+    while len(threads):
+        partials = list()
+        for thread in threads:
+            thread.start()
+            partials.append(thread)
+            threads.remove(thread)
+            if len(partials) == NUM_THREADS:
+                break
+
+        for t in partials:
+            t.join()
+            index += 1
+
+        percentage = (index * 100) / total
+        log("%d%%" % percentage)
+
 def get_input():
-    term = raw_input("Enter your seach term: ")
+    term = raw_input("Enter your search term: ")
     ty = int(raw_input("Supported search types: \nArtist - 1\nAlbum - 2\nSong - 3\nEnter type: "))
     return term, ty
 
@@ -271,7 +303,7 @@ def searchmain():
     for s in dl_list:
         print("Song: %s - Artist: %s from Album: %s" % (dl_list[s]["title"], dl_list[s]["artist"], dl_list[s]["album"]))
     mode = int(raw_input("Go ahead (1) or choose songs interactively (2)\n[1/2]: "))
-    if api == False:
+    if not api:
         print("Error - Failed to initialise GMusic API") # notify user as this is generally run interactively
         return
     else:
@@ -302,6 +334,7 @@ if __name__ == "__main__":
     OVERWRITE = args.overwrite
     ADDACCOUNT = args.addaccount
     OTHERACCOUNT = args.otheraccount
+    NUM_THREADS = args.threads
     make_prog_dir()
     if ADDACCOUNT:
         add_account()
@@ -309,7 +342,7 @@ if __name__ == "__main__":
     all_store = {} # open an empty store
     if SEARCHMODE:
         searchmain()
-    else :
+    else:
         if OTHERACCOUNT:
             dl_store = shelve.open(dl2_store_file)
         else:
