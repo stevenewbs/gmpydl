@@ -151,7 +151,7 @@ def fill_all_store(api):
     songs = []
     for chunk in api.get_uploaded_songs(incremental=True):
         songs = songs + chunk
-        out = 'Loding library...%d' % len(songs)
+        out = 'Loading library...%d' % len(songs)
         sys.stdout.write("\r\x1b[K"+out.__str__())
         sys.stdout.flush()
     print("\r\n")
