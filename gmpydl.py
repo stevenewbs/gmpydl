@@ -1,16 +1,15 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 # Copyright (c) 2015 Steve Newbury
-import threading
-from thread import start_new_thread
-from gmusicapi import Musicmanager
-from getpass import getpass
-import os
-import sys
-import shelve
-import unicodedata
 import argparse
 import datetime
+import os
+import shelve
+import sys
+import threading
+import unicodedata
+
+from gmusicapi import Musicmanager
 
 program_dir = os.path.expanduser("~/.gmpydl")
 dl_store_file = os.path.join(program_dir, ".gmpydl_dl_store")
