@@ -1,6 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 # Copyright (c) 2015 Steve Newbury
+
 import argparse
 import datetime
 import os
@@ -177,8 +178,9 @@ def download_song(api, sid, update_dl):
     if not OVERWRITE:
       log("File already exists - marking as downloaded (enable Overwrite to re-download)")
       if update_dl:
-        dl_store[sid] = all_store[sid]
-        dl_store.sync()
+        with lock:
+          dl_store[sid] = all_store[sid]
+          dl_store.sync()
       return True
   # do the download
   try:
@@ -254,16 +256,17 @@ def _get_song_dir(song):
 def _mkdir_song(sid):
   song = _get_track_info(sid)
   path = _get_song_dir(song)
+  result = False
   if not os.path.exists(path):
     try:
       os.makedirs(path)
-      return True
+      result = True
     except OSError as e:
       log("Error making directory: %s" % e)
-      return False
     except IOError:
       log("Failed to make dir")
-      return False
+
+  return result
 
 
 def submit_threads(threads):
