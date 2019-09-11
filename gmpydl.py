@@ -256,15 +256,16 @@ def _get_song_dir(song):
 def _mkdir_song(sid):
   song = _get_track_info(sid)
   path = _get_song_dir(song)
-  result = False
+  result = True
   if not os.path.exists(path):
     try:
       os.makedirs(path)
-      result = True
     except OSError as e:
       log("Error making directory: %s" % e)
+      result = False
     except IOError:
       log("Failed to make dir")
+      result = False
 
   return result
 
