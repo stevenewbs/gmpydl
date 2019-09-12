@@ -173,14 +173,12 @@ def download_song(api, sid, update_dl):
   song = _get_track_info(sid)
   path = _get_song_dir(song)
   artist, album, alb_artist, title = get_song_data(song)
-  f = u'%s/%02d - %s.mp3' % (path, song['track_number'], title)
+  f = _get_normalized_file_path(path, song)
   if os.path.isfile(f):
     if not OVERWRITE:
-      log("File already exists - marking as downloaded (enable Overwrite to re-download)")
+      log("File {} already exists - marking as downloaded (enable Overwrite to re-download)".format(f))
       if update_dl:
-        with lock:
-          dl_store[sid] = all_store[sid]
-          dl_store.sync()
+        _update_dl(sid)
       return True
   # do the download
   try:
@@ -189,19 +187,29 @@ def download_song(api, sid, update_dl):
   except Exception as e:
     log(str(e) + " ID: " + song['id'] + " - " + song['title'])
     return False
-  filename = u'%s/%02d - %s.mp3' % (path, song['track_number'], song['title'])
-  filepath = u'%s' % os.path.join(path, filename)
+  filepath = _get_normalized_file_path(path, song)
   try:
     with open(filepath, 'wb') as f:
       f.write(audio)
     if update_dl:
-      with lock:
-        dl_store[sid] = all_store[sid]
-        dl_store.sync()
+      _update_dl(sid)
   except IOError as e:
     log("Failed to write %s " % filepath + ": " + str(e))
     return False
   return True
+
+def _update_dl(sid):
+  with lock:
+    dl_store[sid] = all_store[sid]
+    dl_store.sync()
+
+def _get_normalized_file_path(path, song):
+  song_title = song['title']
+  song_title = song_title.replace("/","-")
+  filename = u'%s/%02d - %s.mp3' % (path, song['track_number'], song_title)
+  filepath = u'%s' % os.path.join(path, filename)
+  return os.path.normpath(filepath)
+
 
 def main():
   if not load_settings():
