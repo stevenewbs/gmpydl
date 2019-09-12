@@ -26,7 +26,7 @@ def do_args():
   parser.add_argument('-n', '--nodl', action='store_true', help="No Download - synchronises a list of existing files.  Handy for initial sync if you dont need all your current music downloaded")
   parser.add_argument('-d', '--debug', action='store_true', help="Debug mode - only downloads 10 tracks")
   parser.add_argument('-s', '--search', action='store_true', help="Search for an album, artist or song to download")
-  parser.add_argument('-t', '--threads', default=15, action='store_true', help="Number of multiple threads for downloading tracks (Default: 15)")
+  parser.add_argument('-t', '--threads', default=5, help="Number of multiple threads for downloading tracks (Default: 5)", type=int)
   parser.add_argument('-o', '--overwrite', action='store_true', help="Force overwrite of songs that already exist in the destination.")
   parser.add_argument('-a', '--addaccount', action='store_true', help="Add an extra Google account to download music from.") # i got married!
   parser.add_argument('--otheraccount', action='store_true', help="Use the second Google account (if configured)")
