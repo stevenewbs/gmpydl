@@ -10,6 +10,7 @@ import shelve
 import unicodedata
 import argparse
 import datetime
+import uuid
 
 program_dir = os.path.expanduser("~/.gmpydl")
 dl_store_file = os.path.join(program_dir, ".gmpydl_dl_store")
@@ -138,7 +139,8 @@ def api_init():
             mm.perform_oauth(storage_filepath=creds)
             update_first(e)
     log("Logging in as %s" % e)
-    if mm.login(oauth_credentials=creds):
+    u_id = hex(uuid.getnode())
+    if mm.login(oauth_credentials=creds, uploader_id=u_id):
         return mm
     log("Login failed for second user")
     return False
