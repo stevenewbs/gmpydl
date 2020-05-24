@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 # Copyright (c) 2015 Steve Newbury
 
 from gmusicapi import Musicmanager
@@ -130,7 +129,7 @@ def add_account():
 def api_init():
     mm = Musicmanager()
     e = settings['email']
-    u_id = ':'.join(re.findall('..', '%012x' % uuid.getnode()))
+    u_id = ':'.join(re.findall('..', '%012x' % uuid.getnode())).upper()
     creds = os.path.expanduser("~/.local/share/gmusicapi/oauth.cred") # default oauth store location
     if OTHERACCOUNT:
         e = settings['email2']
@@ -160,9 +159,8 @@ def fill_all_store(api):
     print("\r\n")
     for s in songs:
         # id comes back in unicode so have to make it dictionary friendly string
-        sid = unicodedata.normalize('NFKD', s['id']).encode('ascii', 'ignore')
-        if sid not in all_store:
-            all_store[sid] = s
+        if s['id'] not in all_store:
+            all_store[s['id']] = s
             count += 1
 
 def get_song_data(song):
