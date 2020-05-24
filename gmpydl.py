@@ -39,8 +39,8 @@ def update_first(email):
         with open(conf_file, "a") as conf:
             conf.write(line)
     except IOError:
-        print "Failed to update conf file following OAUTH for %s" % e
-        print "Manually add the line \"%s\" to the config file" % line
+        print("Failed to update conf file following OAUTH for %s" % e)
+        print("Manually add the line \"%s\" to the config file" % line)
     return True
 
 def make_prog_dir():
@@ -55,7 +55,7 @@ def make_prog_dir():
 def log(what):
     s = "\n%s : %s" % (datetime.datetime.now(), what)
     if TESTING:
-        print s
+        print(s)
     else:
         with open(log_file, 'a+') as f:
 		f.write(s.encode("UTF-8"))
@@ -65,16 +65,16 @@ def load_settings():
         return False
     if not os.path.exists(conf_file):
         # ask for the email address and music destination
-        print "Welcome to gmpydl - I cant find a config file so please enter the following to begin\n"
-        settings['email'] = raw_input("Google Account email address: ")
-        settings['dest'] = raw_input("Music download destination directory: ")
+        print("Welcome to gmpydl - I cant find a config file so please enter the following to begin\n")
+        settings['email'] = input("Google Account email address: ")
+        settings['dest'] = input("Music download destination directory: ")
         try:
             with open(conf_file, "w") as conf:
                 log("Writng config to file")
                 conf.write("email %s\n" % settings['email'])
                 conf.write("dest %s\n" % settings['dest'])
         except IOError as e:
-            print "Error creating config file: %s" % e
+            print("Error creating config file: %s" % e)
             return False
     else:
         try:
@@ -107,21 +107,21 @@ def load_settings():
 def add_account():
     if load_settings():
         if settings['email2'] == None:
-            print "Adding second account to gmpydl - please enter the following to begin\n"
-            settings['email2'] = raw_input("Google Account email address: ")
+            print("Adding second account to gmpydl - please enter the following to begin\n")
+            settings['email2'] = input("Google Account email address: ")
             try:
                 with open(conf_file, "a") as conf:
                     log("Writng config to file")
                     conf.write("\nemail2 %s\n" % settings['email2'])
             except IOError as e:
-                print "Error creating config file: %s" % e
+                print("Error creating config file: %s" % e)
                 return False
             # perform the oauth
             api = api_init()
             if api is not False:
                 nice_close(api)
         else:
-            print("Please remove email2 setting from %s" % conf_file)
+            print(("Please remove email2 setting from %s" % conf_file))
     else:
         print("Epic Fail! Check config file")
 
@@ -134,7 +134,7 @@ def api_init():
         creds = os.path.expanduser("~/.local/share/gmusicapi/oauth2.cred")
     if e is not None:
         if settings['first'] == '1' or OTHERACCOUNT and settings['first2'] == '1':
-            print "Performing OAUTH for %s" % e
+            print("Performing OAUTH for %s" % e)
             mm.perform_oauth(storage_filepath=creds)
             update_first(e)
     log("Logging in as %s" % e)
@@ -158,7 +158,7 @@ def fill_all_store(api):
     for s in songs:
         # id comes back in unicode so have to make it dictionary friendly string
         sid = unicodedata.normalize('NFKD', s['id']).encode('ascii', 'ignore')
-        if not all_store.has_key(sid):
+        if sid not in all_store:
             all_store[sid] = s
             count += 1
 
@@ -188,7 +188,7 @@ def download_song(api, sid, update_dl):
     else:
         # check if the filename already exists
         # Build filename like "02 - track title.mp3" (like Gmusic passes when we download)
-        f = u'%s/%02d - %s.mp3' % (path, song['track_number'], song['title'])
+        f = '%s/%02d - %s.mp3' % (path, song['track_number'], song['title'])
         if os.path.isfile(f):
             if not OVERWRITE:
                 log("File already exists - marking as downloaded (enable Overwrite to re-download)")
@@ -198,8 +198,8 @@ def download_song(api, sid, update_dl):
                 return True
     # do the download
     ignore, audio = api.download_song(song['id'])
-    filename = u'%s/%02d - %s.mp3' % (path, song['track_number'], song['title'])
-    filepath = u'%s' % os.path.join(path, filename)
+    filename = '%s/%02d - %s.mp3' % (path, song['track_number'], song['title'])
+    filepath = '%s' % os.path.join(path, filename)
     try:
         with open(filepath, 'wb') as f:
             f.write(audio)
@@ -228,7 +228,7 @@ def main():
             dl_count = 0
             if diff > 0:
                 for s in all_store:
-                    if not dl_store.has_key(s):
+                    if s not in dl_store:
                         download_song(api, s, True)
                         dl_count += 1
                         if TESTING:
@@ -240,8 +240,8 @@ def main():
         log("Failed to initialise GMusic API")
 
 def get_input():
-    term = raw_input("Enter your seach term: ")
-    ty = int(raw_input("Supported search types: \nArtist - 1\nAlbum - 2\nSong - 3\nEnter type: "))
+    term = input("Enter your seach term: ")
+    ty = int(input("Supported search types: \nArtist - 1\nAlbum - 2\nSong - 3\nEnter type: "))
     return term, ty
 
 def searchmain():
@@ -267,10 +267,10 @@ def searchmain():
     if len(dl_list) == 0:
         print("None found")
         return
-    print("Proposing download of %d songs:" % len(dl_list))
+    print(("Proposing download of %d songs:" % len(dl_list)))
     for s in dl_list:
-        print("Song: %s - Artist: %s from Album: %s" % (dl_list[s]["title"], dl_list[s]["artist"], dl_list[s]["album"]))
-    mode = int(raw_input("Go ahead (1) or choose songs interactively (2)\n[1/2]: "))
+        print(("Song: %s - Artist: %s from Album: %s" % (dl_list[s]["title"], dl_list[s]["artist"], dl_list[s]["album"])))
+    mode = int(input("Go ahead (1) or choose songs interactively (2)\n[1/2]: "))
     if api == False:
         print("Error - Failed to initialise GMusic API") # notify user as this is generally run interactively
         return
@@ -278,7 +278,7 @@ def searchmain():
         x = 1
         for s in dl_list:
             if mode == 2:
-                do = raw_input("Download %s - %s(%s)? [Y/n] :" % (dl_list[s]["title"], dl_list[s]["artist"], dl_list[s]["album_artist"]))
+                do = input("Download %s - %s(%s)? [Y/n] :" % (dl_list[s]["title"], dl_list[s]["artist"], dl_list[s]["album_artist"]))
                 if do.strip() == "n" or do.strip() == "N":
                     print("Skipping...")
                     continue
