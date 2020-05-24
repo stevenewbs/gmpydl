@@ -58,7 +58,7 @@ def log(what):
         print(s)
     else:
         with open(log_file, 'a+') as f:
-            f.write(s.encode("UTF-8"))
+            f.write(s)
 
 def load_settings():
     if not make_prog_dir():
