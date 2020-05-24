@@ -129,6 +129,7 @@ def add_account():
 def api_init():
     mm = Musicmanager()
     e = settings['email']
+    u_id = uuid.getnode()
     creds = os.path.expanduser("~/.local/share/gmusicapi/oauth.cred") # default oauth store location
     if OTHERACCOUNT:
         e = settings['email2']
@@ -136,10 +137,9 @@ def api_init():
     if e is not None:
         if settings['first'] == '1' or OTHERACCOUNT and settings['first2'] == '1':
             print("Performing OAUTH for %s" % e)
-            mm.perform_oauth(storage_filepath=creds)
+            mm.perform_oauth(storage_filepath=creds, uploader_id=u_id)
             update_first(e)
     log("Logging in as %s" % e)
-    u_id = hex(uuid.getnode())
     if mm.login(oauth_credentials=creds, uploader_id=u_id):
         return mm
     log("Login failed for second user")
