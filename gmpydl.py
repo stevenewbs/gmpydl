@@ -11,6 +11,7 @@ import unicodedata
 import argparse
 import datetime
 import uuid
+import re
 
 program_dir = os.path.expanduser("~/.gmpydl")
 dl_store_file = os.path.join(program_dir, ".gmpydl_dl_store")
@@ -129,7 +130,7 @@ def add_account():
 def api_init():
     mm = Musicmanager()
     e = settings['email']
-    u_id = uuid.getnode()
+    u_id = ':'.join(re.findall('..', '%012x' % uuid.getnode()))
     creds = os.path.expanduser("~/.local/share/gmusicapi/oauth.cred") # default oauth store location
     if OTHERACCOUNT:
         e = settings['email2']
