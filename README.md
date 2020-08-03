@@ -13,8 +13,9 @@ http://unofficial-google-music-api.readthedocs.org/en/latest/index.html
 
 Requirements
 -----
-* Python2
+* Python3
 * gmusicapi (see above for installation via pip)
+  * `python3 -m pip install gmusicapi`
 * A Google account with some music
 
 
@@ -26,6 +27,10 @@ Usage
 
 If ~/.gmpydl/.gmpydl.conf does not exist (first run), you will be asked to confirm your Google account details and the directory you want your music to end up in.
 
+You may also want to set uploader ID if gmusicapi can't resolve computer's MAC, see https://unofficial-google-music-api.readthedocs.io/en/latest/reference/musicmanager.html#gmusicapi.clients.Musicmanager.login
+
+Example of how to get MAC in linux for uploader ID:
+`ip link | grep ether | awk '{ print $2 }' | tr '[:lower:]' '[:upper:]'`
 
 Options
 -----
